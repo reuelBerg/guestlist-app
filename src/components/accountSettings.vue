@@ -1,7 +1,7 @@
 <template>
   <v-container fluid style="text-align:center; background: url(https://cdn.wonderfulengineering.com/wp-content/uploads/2014/06/galaxy-wallpapers-10.jpg)">
     <h1>AccountSettings</h1>
-    <p v-if="welcomeMessage">Welcome to your account settings page. <span>You have no  account connected. Go <span class="cyan--text font-weight-bold" style="">premium</span> or start a free trial!</span> </p>
+    <p v-if="welcomeMessage">Welcome to your account settings page. <span v-show="!showAccountBlock">You have no  account connected. Go <span class="cyan--text font-weight-bold" style="">premium</span> or start a free trial!</span> </p>
     <br>
     <v-card  v-show="showAccountBlock" class="pa-3">
       <div  class="" style="text-align:left;">
@@ -64,6 +64,8 @@
 <script scoped>
 import firebase from "firebase";
 import { db } from "../main";
+import store from '../store'
+
 
 export default {
   data() {
@@ -81,13 +83,17 @@ export default {
         city: "",
         country: ""
       },
-      userInfo: {},
       accountInfo: {}
     };
   },
   created: function() {
     this.getUser();
   },
+computed: {
+  userInfo() {
+    return store.state.user;
+  }
+},
   methods: {
     sendInvite: async function() {
       if (this.accountInfo == {}) {
@@ -110,24 +116,38 @@ export default {
 
       // check if user exist
       const userCheck = await db .collection("users") .where("email", "==", inputValue) .get();
+      const inviteCheck = await db.collection("invites").where("email", "==", inputValue).get();
+
       // add user if none
       const inviteRef = db.collection("invites");
       let ref;
       let id;
       let name = null;
       // to add to accounts admins obj
-      if (userCheck.empty) {
+      if (userCheck.empty ) { return alert('in BETA 1.0 you can only invite people who already have an account. Please make sure they register before inviting. This feature will be added soon.')}
+
+      if (userCheck.empty && inviteCheck.empty) {
+
         let inv = await inviteRef.add({ email: inputValue, name: null }); //gets more stuff added
         console.log("temp user =>", inv);
         ref = inviteRef.doc(inv.id);
         id = inv.id;
       } else {
-        let u = userCheck.docs[0];
-        console.log("user =>", userCheck.docs[0].id);
+        if (!userCheck.empty) {
+          let u = userCheck.docs[0];
+          console.log("user =>", userCheck.docs[0].id);
 
-        ref = inviteRef.doc(u.id);
-        id = u.id;
-        name = u.data().fullName;
+          ref = db.collection('invites').doc(u.id);
+          id = u.id;
+          name = u.data().fullName;
+        } else if (!inviteCheck.empty) {
+          let u = inviteCheck.docs[0];
+          console.log("user =>", inviteCheck.docs[0].id);
+
+          ref = inviteCheck.doc(u.id);
+          id = u.id;
+          name = u.data().fullName;
+        }
       }
       console.log("hey");
 
@@ -223,17 +243,7 @@ export default {
     },
 
     getUser: async function() {
-      var userId = this.user.uid;
-      // get user with id
-      const userRef = db.collection("users").doc(userId);
-      let userDoc = await userRef.get();
-      console.log("userdoc => ", userDoc);
-      if (!userDoc.exists) {
-        return alert("no user with param id");
-      } else {
-        this.userInfo = userDoc.data();
-      }
-      let usr = userDoc.data();
+      let usr = this.userInfo;
       if (usr.accountId) {
         this.getAccount(usr.accountId);
         this.showForm = false;

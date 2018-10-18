@@ -7,11 +7,11 @@ import { config } from "../config/firebaseConfig.js";
 import firebase from "firebase/app";
 import "material-design-icons/iconfont/material-icons.css";
 import "typeface-roboto/index.css";
+import store from "./store";
 require("firebase/firestore");
 require("firebase/auth");
 
 let app;
-
 // FIREBASE CONFIG
 firebase.initializeApp(config);
 // Initialize Cloud Firestore through Firebase
@@ -40,16 +40,17 @@ Vue.use(Vuetify);
 
 Vue.config.productionTip = false;
 
-firebase.auth().onAuthStateChanged(function(user) {
+firebase.auth().onAuthStateChanged(function() {
   if (!app) {
     /* eslint-disable no-new */
     new Vue({
       el: "#app",
       router,
+      store,
       render: h => h(App)
     });
   }
 });
 
 import "./registerServiceWorker.js";
-export { db};
+export { db };

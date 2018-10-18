@@ -3,15 +3,15 @@
     <v-btn :disabled="disable" fixed absolute bottom right fab class="black mb-2"
     style="bottom: 85px;" slot="activator"
     :large="$vuetify.breakpoint.smAndUp">
-    <v-icon :large="$vuetify.breakpoint.smAndUp">add</v-icon>
+    <v-icon :large="$vuetify.breakpoint.smAndUp" style="display:flex ">add</v-icon>
   </v-btn>
 
   <!-- add name to list ============================================================================  add name to list -->
   <v-card transition="slide-y-reverse-transition" class="pa-3">
     <h2 class="mt-3">Create a new list</h2>
     <v-select
-    v-if="userinfo"
-    :items="accountList"
+    v-if="userInfo"
+    :items="userInfo.accounts"
     label="pick account"
     v-model="add.accountName"
     ></v-select>
@@ -33,7 +33,7 @@
     slot="activator"
     v-model="add.date"
     placeholder="pick a date"
-    prepend-icon="event"
+    append-icon="event"
     readonly
     ></v-text-field>
     <v-date-picker v-model="date" no-title scrollable>
@@ -58,8 +58,8 @@
   <span class="red--text" v-html="err"></span>
   <v-card-actions>
     <v-spacer></v-spacer>
-    <v-btn color="grey darken-1" flat @click.native="dialog = false">Cancel</v-btn>
-    <v-btn color="cyan darken-1" flat @click="newList">Add!</v-btn>
+    <v-btn color="grey darken-1" flat @click.native="clearForm(); dialog = false">Cancel</v-btn>
+    <v-btn color="cyan darken-1" flat @click=" newList">Add!</v-btn>
   </v-card-actions>
 </v-card>
 </v-dialog>
@@ -73,13 +73,15 @@
 <script scoped>
 import firebase from "firebase";
 import { db } from "../main";
+import store from '../store'
+
 
 export default {
   name: "dashboardAddModal",
-  props: ["userinfo"],
   data() {
     return {
       user: firebase.auth().currentUser,
+      accounts: [],
       dialog: false,
       disable: false,
       datePicker: false,
@@ -88,68 +90,74 @@ export default {
       err: "",
       add: {
         accountName: "",
-        title: "New Title",
-        subTitle: "Sub Title",
-        date: "17-7",
+        title: "",
+        subTitle: "",
+        date: "",
         created: new Date(),
         count: 0,
-        maxCount: "20",
-        options: ["+1", "Tokens"],
+        maxCount: "",
+        options: ["Tokens"],
         owner: "",
         accountId: "",
         accountName: ""
       }
     };
   },
+
   computed: {
     computedDateFormatted() {
       return this.formatDate(this.date);
     },
-
-// // ** returns all accounts of user to select when adding new **
-//     accountList() {
-//
-// if (this.userinfo == undefined) {return null}
-//   let res = []
-// // if only one account then set inputvalue to account
-//   if (Object.keys(this.userinfo.admin).length === 1) {
-//     console.log(Object.keys(this.userinfo.admin)[0]);
-//
-//     this.add.accountName = this.userinfo.admin[
-//       Object.keys(this.userinfo.admin)[0]
-//     ].name;
-//   }
-//   // add accounts for select menu to res obj
-//   for (let ad in this.userinfo.admin) {
-//     res.push(this.userinfo.admin[ad].name);
-//   }
-//   return res;
-//
-// }
+    userInfo() {
+    return store.state.user
+}
 
   },
   watch: {
     date(val) {
       this.add.date = this.formatDate(this.date);
-    }
+    },
+    userInfo: function () {
+    console.log('acc yo', this.userInfo.accounts[0]);
+    this.add.accountName = this.userInfo.accounts[0]
+}
   },
   methods: {
+clearForm: function () {
+  this.add.accountName = ""
+  this.add.title = ""
+  this.add.subTitle = ""
+  this.add.date = ""
+  this.add.created = new Date()
+  this.add.count = 0
+  this.add.maxCount = ""
+  this.add.options = ["+1", "Tokens"]
+  this.add.owner = ""
+  this.add.accountId = ""
+  this.add.accountName = ""
+this.err = ""
+},
     newList: async function() {
       var d = this;
       let add = this.add;
+
       if (add.accountName === "") {
-        this.err = "You have to pick an account. <br>";
+        this.err = "You have to pick an account <br>";
         return;
+      }
+    
+      if (add.title == "" || add.subTitle == "" || add.date == ""  ) {
+        return this.err = "Enter Title, SubTitle and Date. <br>";
       }
       // vul add object
       var user = this.user;
       this.add.owner = user.uid;
-      let mainItemId = await db.collection('list_tems').add({})
+      let mainItemId = await db.collection('list_items').add({})
       this.add.main_item = mainItemId.id;
 
       //  get id of accountname.
-      for (let account_id in this.userinfo.admin) {
-        if (this.userinfo.admin[account_id].name == this.add.accountName) {
+      for (let account_id in this.userInfo.admin) {
+        if (this.userInfo.admin[account_id].name == this.add.accountName) {
           add.accountId = account_id;
         }
       }
@@ -160,6 +168,7 @@ export default {
       var listDoc = await listRef.add(add); //returns ID in listRef.id
       d.$emit("refreshList");
       d.dialog = false;
+this.clearForm()
     },
     formatDate(date) {
       if (!date) return null;

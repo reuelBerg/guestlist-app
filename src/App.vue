@@ -81,18 +81,28 @@
 </v-app>
 </template>
 
-<style scoped>
+<style >
 .fade-enter-active, .fade-leave-active {
   transition: opacity .26s;
 }
 .fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
   opacity: 0;
 }
+.material-icons {display:inline-flex!important}
+
+.label {
+  display: inline-block;
+  width: 110px;
+  margin-right: 10px;
+  font-weight: bold;
+}
 </style>
 
 <script>
 import firebase from 'firebase'
 import { db } from './main'
+import store from "./store";
+
 
 
 export default {
@@ -119,19 +129,27 @@ export default {
       })
     }
   },
-  mounted: function () {
+  created: function () {
     var d = this
     var arr = []
-    db.collection("users").doc(firebase.auth().currentUser.uid).collection('notifications')
+    db.collection("users").doc(firebase.auth().currentUser.uid)
     .onSnapshot(function(snapShot) {
-      console.log("Current data: ", snapShot);
-      d.messages = [];
-      snapShot.forEach(function (snap) {
-        if (snap.data().message) {
-          d.messages.push(snap.data())
-        }
-      })
+      console.log("Current data: ", snapShot.data());
+      let usr = snapShot.data()
 
+if(usr.admin) {
+console.log(usr.admin);
+  for (var acc in usr.admin) {
+console.log(usr.admin[acc].name);
+      arr.push(usr.admin[acc].name)
+
+  }
+}
+console.log(arr);
+
+store.commit('updateUser', {accounts: arr, ...snapShot.data()})
+
+console.log('from state! :)', store.state.user);
     });
   },
 computed: {

@@ -8,12 +8,12 @@
       <h2 class="mt-3">Share with someone</h2>
       <v-text-field v-model="shareWithInput" placeholder="Email" style=""></v-text-field>
       <v-select
-      :items="['VIEW', 'ADD', 'EDIT', 'ADMIN']"
+      :items="['ACTIVATE', 'ADD']"
       label="add permission"
       v-model="shareModeInput"
       ></v-select>
-      <v-text-field v-show="shareModeInput == 'ADD'" v-model="shareAddLimit" oninput="validity.valid||(value='')" placeholder="limit number of adds" min=0 pattern="[0-9]*" style=""></v-text-field>
-      <v-layout v-show="add.options != []" row no-wrap align-center v-for="(item, index) in add.options" :key="item" class="">
+      <v-text-field v-show="shareModeInput == 'ADD'" v-model="shareAddLimit" oninput="validity.valid||(value='')" placeholder="max number of adds" min=0 pattern="[0-9]*" style=""></v-text-field>
+      <v-layout v-show="shareModeInput == 'ADD' && add.options != []" row no-wrap align-center v-for="(item, index) in add.options" :key="item" class="">
         <span  class="pr-2 title" style="width:30%; min-width:100px; overflow:hidden;">{{item}}</span>
         <v-text-field  xs5 style="max-width:60px" step="1.00" min=0 oninput="validity.valid||(value='')" type="text" pattern="[0-9]*" class="nr dark transparent pa-1 title"   v-model="sharedOptions[item]"></v-text-field>
         <!-- <span disabled class="orange--text pl-3">
@@ -22,16 +22,18 @@
       <v-btn small icon style="margin: 1px"  color="teal" @click="decrement(item)"><v-icon>chevron_left</v-icon></v-btn>
       <v-btn small icon style="margin: 1px"  color="teal" @click="increment(item)"><v-icon>chevron_right</v-icon></v-btn>
       <v-btn small icon style="margin: 1px"  color="teal" @click="clear(item)"><v-icon>clear</v-icon></v-btn>
+
     </v-layout>
     <v-btn left small class="pink darken-2" @click="addShared">send invitation</v-btn>
-    <div class="mt-3" style="border-bottom: 1px solid grey"></div>
-    <h3>Current users</h3>
+    <p class="red--text" v-html="error"></p>
+    <div v-show="!dbsharedlist" class="mt-3" style="border-bottom: 1px solid grey"></div>
 
+<h3 v-show="!dbsharedlist">Current users</h3>
     <v-list two-line dense>
       <v-list-tile class="grey darken-2" v-for="(item, key) in dbsharedlist" :key="key">
         <v-list-tile-content>
           <v-list-tile-title v-text="item.email"></v-list-tile-title>
-          <v-list-tile-sub-title>{{item.mode}} - {{item.addLimit}}</v-list-tile-sub-title>
+          <v-list-tile-sub-title>{{item.mode}} {{item.addLimit}}</v-list-tile-sub-title>
         </v-list-tile-content>
         <v-list-tile-action>
           <!-- TODO: make menu with a list (gives error 'cyclic object  value') -->
@@ -40,12 +42,16 @@
             slot="activator"
             dark icon
             >
-            <v-icon>remove_red_eye</v-icon>
+            <v-icon v-text="item.mode == 'ADD' ? 'add': 'remove_red_eye'"></v-icon>
           </v-btn>
           <v-list>
+            <span v-if="Object.keys(item.options).length === 0">empty</span>
 
-            <v-list-tile>
+            <v-list-tile v-else v-for="(it, ke) in item.options">
+
+              <span v-text="key"></span>: <span v-text="it"></span>
             </v-list-tile>
+
           </v-list>
         </v-menu>
       </v-list-tile-action>
@@ -57,7 +63,7 @@
   <v-card-actions>
     <v-spacer></v-spacer>
 
-    <v-btn color="cyan darken-1" flat @click="dialog = false">Done</v-btn>
+    <v-btn color="cyan darken-1" flat @click="clearForm(); dialog = false">Close</v-btn>
   </v-card-actions>
 </v-card>
 </v-dialog>
@@ -66,12 +72,14 @@
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+
 </style>
 
 <script scoped>
 import firebase from "firebase";
 import { db } from "../main";
 import { bus } from "../main"; // import the bus from main.js or new file
+import store from "../store";
 
 export default {
   name: "dashboardShareModal",
@@ -79,30 +87,33 @@ export default {
   data() {
     return {
       dialog: false,
-      shareWithInput: "test@gmail.com",
-      shareModeInput: "ADD",
-      shareAddLimit: "20",
+      shareWithInput: "",
+      shareModeInput: "",
+      shareAddLimit: "",
       sharedOptions: {},
       dbsharedlist: {},
-      shared: [],
+      error: ' ',
       output: {}
     };
   },
   computed: {},
   watch: {
-    date(val) {
-      this.add.date = this.formatDate(this.date);
-    }
   },
   methods: {
-    removeShared: function(key) {
+clearForm: function () {
+  this.shareWithInput = ""
+  this.shareModeInput = ""
+  this.shareAddLimit = ""
+  this.sharedOptions = {}
+  this.dbsharedlist = {}
+  this.error = ''
+  this.output = {}
+},
+    removeShared: function(key) { // DOES NOT REMOVE LIST_ITEM OF USER! Remove manually in EDIT LIST
+// key is id of list
       delete this.sharedOptions[key];
-
-      var i = this.add.shared.indexOf(key);
-      this.add.shared.splice(i, 1);
-
-      db.collection().doc(key).update({shared: firebase.firestore.FieldValue.arrayRemove(id)})
-
+      db.collection('lists').doc(this.listid).update({['shared.'+key]: firebase.firestore.FieldValue.delete()})
+this.refreshSharedList()
     },
     addShared: function() {
       var obj = {
@@ -110,7 +121,6 @@ export default {
         addLimit: this.shareAddLimit,
         options: this.sharedOptions
       };
-      this.shared.push(this.shareWithInput); // can go
       this.output = obj;
       try {
         this.sendInvite();
@@ -120,15 +130,24 @@ export default {
     },
 
     sendInvite: async function() {
+
       var d = this;
       var user = firebase.auth().currentUser;
       var shareWithInput = this.shareWithInput.toLowerCase().trim();
 
-
-      //bounce if own email
-      if (shareWithInput === user.email) {
-        return alert("you cannot add yourself");
+      if (shareWithInput == '' || this.shareModeInput == '') {
+        return this.error += 'Email and Permission are required. <br>'
       }
+if (this.shareModeInput == 'ADD' && this.shareAddLimit == "") {
+  return this.error += 'Set amount of adds on list. <br>'
+}
+      //bounce if own email
+      if (shareWithInput === user.email) {return alert("you cannot add yourself") }
+      for (var prs in this.dbsharedlist) {
+        if (this.dbsharedlist[prs].email === shareWithInput) {
+          return alert("person already in shared list!");
+      }  }
+
       // vul add object
       this.add.owner = user.uid;
       //vul database
@@ -142,13 +161,15 @@ export default {
       // add user if none
       let ref; let id; let name = null;
       const inviteRef = db.collection("invites");
-      // to add to shared  obj
+        // if no user
+  if (userCheck.empty && inviteCheck.empty ) { return alert('in BETA 1.0 you can only invite people who already have an account. Please make sure they register before inviting. This feature will be added soon.')}
       if (userCheck.empty && inviteCheck.empty ) {
+
         let inv = await inviteRef.add({ email: shareWithInput, name: null, created: new Date() }); //gets more stuff added
         console.log("temp user =>", inv);
         ref = db.collection("users").doc(inv.id);
         id = inv.id;
-      } else {
+      } else {         // if user has account
         if (!userCheck.empty) {
           let u = userCheck.docs[0];
           console.log("user =>", userCheck.docs[0].id);
@@ -166,8 +187,9 @@ export default {
         }
 
       }
+
       // if not shown on screen (or in vm.data), set shared and make item
-      if (!this.dbsharedlist[this.shareWithInput]) {
+      if (true) {
         // if ADD create list_item for this person
         let newItem = await db.collection('list_items').add({})
         console.log(newItem);
@@ -176,15 +198,16 @@ export default {
         }
         var obj = {
           email: shareWithInput,
+          name: name || null,
           item_id: newItem.id,
           ...this.output
         };
+  console.log('id', this.listid);
 
-        console.log('id', this.listid);
         const listRef = db.collection("lists").doc(this.listid)
+
         let str = 'shared.' + id // user id
         listRef.update({[str]: obj}) //update list main
-
 
         this.refreshSharedList();
       } else {
@@ -212,25 +235,16 @@ export default {
         (this.sharedOptions[option] <= 1) { this.clear(option); } else {
           this.sharedOptions[option]--; }
         },
-        formatDate(date) {
-          if (!date) return null;
-          const [year, month, day] = date.split("-");
-          return `${day}/${month}/${year}`;
-        },
-        parseDate(date) {
-          if (!date) return null;
-
-          const [month, day, year] = date.split("/");
-          return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-        },
         refreshSharedList: async function() {
           // get all shared users from sharedOptions subcollection
           //  TODO: show if permitted
           var getSharedList = await db.collection("lists").doc(this.add.id).get();
           this.dbsharedlist = getSharedList.data().shared
+console.log('dbshared => ', getSharedList.data());
         }
       }, //> methods
       created: function() {
+
         this.refreshSharedList();
       }
     };

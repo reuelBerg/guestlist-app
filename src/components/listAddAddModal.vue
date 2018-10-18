@@ -8,18 +8,16 @@
           <v-text-field v-model="add.name" label="name"></v-text-field>
           <v-text-field v-model="add.info" label="info"></v-text-field>
           <v-select
-      :items="['CREW', 'VIP', 'PRESS', 'GUEST', 'GROUP']"
+      :items="['CREW', 'VIP', 'PRESS', 'GUEST']"
       label="add type"
       v-model="add.type"
     ></v-select>
-    <v-text-field v-show="add.type == 'GROUP'" step="0.5" min=0 oninput="validity.valid||(value='')"
-    type="text" pattern="[0-9]*" v-model="add.groupTotal" label="group size"></v-text-field>
-
 
 <!-- OPTIONS =================================================================================== OPTIONS -->
           <v-layout row no-wrap align-center v-for="(item, index) in options.options" :key="index" class="">
                 <span  class="pr-2 subheader font-weight-bold cyan--text text--darken-1" style="font-size:16px; width:30%;  min-width:70px">{{item}}</span>
-                <v-text-field xs5 style="max-width:100px" step="0.5" min=0 oninput="validity.valid||(value='')"
+                <!-- TODO: make the '5' in hint reactive with something from sharedOptions -->
+                <v-text-field  pesistent-hint :hint="5 - add.options[item] + ' left'" xs5 style="max-width:100px" step="1.00" min=0 oninput="validity.valid||(value='')"
                 type="text" pattern="[0-9]*" class="nr dark transparent pa-1 title"
                 v-model="add.options[item]">
               </v-text-field>
@@ -28,10 +26,10 @@
                   <v-btn small icon style="margin: 1px" color="cyan darken-2" @click="clear(item)"><v-icon>clear</v-icon></v-btn>
 
               </v-layout>
-            <span class="red--text" v-html="error"></span>
+
             <v-card-actions>
          <v-spacer></v-spacer>
-         <v-btn color="grey darken-1" flat @click.native="clearFullModal(); dialog = false">Cancel</v-btn>
+         <v-btn color="grey darken-1" flat @click.native="dialog = false">Cancel</v-btn>
          <v-btn color="cyan darken-1" flat @click="addToList">Add!</v-btn>
        </v-card-actions>
       </v-card>
@@ -54,12 +52,10 @@ export default {
       user: firebase.auth().currentUser,
       process: process.env,
       dialog: false,
-      error: '',
       add: {
         name: "",
-        info: "",
-        type: "",
-        groupTotal: '',
+        info: "Mag koekhappen.",
+        type: "GUEST",
         options: {}
       }
     };
@@ -75,7 +71,6 @@ export default {
         type: "",
         options: {}
       };
-      this.error = ''
     },
     increment: function(option) {
       var option = option;
@@ -112,30 +107,14 @@ export default {
       console.log(this.listId);
       console.log(user.uid);
       console.log(user.email);
-if (this.add.name == "") {
-  return this.error = 'Enter a name'
-}
-if (this.add.name.indexOf('..') != -1 || this.add.name.indexOf('...') != -1 || this.add.name.indexOf('....') != -1){
-  this.error = "Name cannot contain '..' <br>";
-  return;
-}
-console.log(this.add.name.charAt(0))
 
-if (this.add.name.charAt(0) == '.' || this.add.name.charAt(this.add.name.length -1) == '.') {
-  this.error = "Name cannot start or end with '.' <br>";
-  return;
-}
-if (this.add.type == "GROUP" && this.add.groupTotal == '') {
-  return this.error = 'Enter the group total'
-}
       // add user id to this new item
       this.add.addById = user.uid;
-      this.add.addByName = user.fullName != undefined ? user.fullName : user.email;
+      this.add.addByName =
+        user.fullName != undefined ? user.fullName : user.email;
 
       var j = JSON.parse(JSON.stringify(this.add));
-
-      let str = this.options.main_item
-      const itemAdd = db .collection("list_items").doc(str).update({[this.add.name]:this.add});
+      const itemAdd = db .collection("list_items").doc(this.listId).update({[this.add.name]:this.add});
       let item = itemAdd.id;
       console.log(item);
       this.$emit("refreshList");

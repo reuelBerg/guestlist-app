@@ -2,8 +2,8 @@
   <v-container fluid>
     <v-slide-y-transition mode="out-in">
       <v-layout column align-center>
-        <h1 class="headline">Hallo mijnheer Wortmann</h1>
-<h3>Kijk maar lekker even rond. Dit wordt awesome.. :-)</h3>
+        <h1 class="headline">Welcome, this app is currently in BETA. It has full functionality but is still missing some awesome features. Bear with us!</h1>
+<h3></h3>
       </v-layout>
     </v-slide-y-transition>
   </v-container>

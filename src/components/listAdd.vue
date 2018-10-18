@@ -3,23 +3,44 @@
     <v-btn  absolute bottom right fab color="black" style=" bottom: -20px;" :large="$vuetify.breakpoint.smAndUp" @click="refresh" >
       <v-icon :large="$vuetify.breakpoint.smOnly" >autorenew</v-icon>
     </v-btn>
-    <listEditAddModal  :listId="listId" :options="listconfig" @refreshList="refresh"></listEditAddModal>
+    <listAddAddModal  :listId="itemId" :options="listconfig" @refreshList="refresh"></listAddAddModal>
+
+
 
     <v-slide-y-transition mode="out-in">
-      <v-layout row justify-center>
-        <v-card d-block style="max-width:800px; width:100%">
-          <v-toolbar  flat color="blue-grey darken-2" dark >
-            <v-spacer></v-spacer>
+      <v-layout row wrap justify-center>
+        <!-- top info part -->
+        <v-card d-flex class="pa-3" style="max-width:400px; width:100%; ">
+          <h3 style="">You are invited to add <span class="cyan--text">{{shared.addLimit}}</span>
+          guests to <br> <span class="cyan--text">{{listconfig.title}}</span> on <span v-text="date" class=" cyan--text"></span></h3>
 
+        </v-card>
+        <v-card d-flex class="pa-3" style="max-width:400px; width:100%; ">
+          <h4>You have the following options left to distribute.</h4>
+          <div v-for="(item, key) in shared.options" class="pa-1">
+            <span class="label">{{key.toUpperCase()}}</span>
+            <v-avatar icon size="22" class="cyan white--text">{{item}}</v-avatar icon small>
+            of
+            <v-avatar icon size="25" class="cyan white--text">{{item}}</v-avatar icon small>
+
+          </div>
+        </v-card>
+
+        <!-- toolbar -->
+        <v-card d-block style="max-width:800px; width:100%">
+          <v-toolbar  flat color="grey darken-3" dark >
+            <v-spacer></v-spacer>
+            <!-- search -->
             <v-input color="" style="max-width: 210px; height:32px;  border-radius:3px; background: #353535;" >
               <input @keyup="search" class=" white--text pa-2 " style=" " type="text" placeholder="Search names" v-model="searchInput">
               <v-icon v-show="searchInput != ''" small class="" @click="searchInput = ''">cancel</v-icon>
             </v-input>
             <v-spacer ></v-spacer>
           </v-toolbar>
-          <v-list v-for="(doc, key) in items"  :key="key" dense two-line>
-            <v-subheader  class="white--text blue-grey">{{key.toUpperCase()}}</v-subheader>
-            <v-list-group   v-for="(item, index) in doc"  v-model="item.active">
+          <div v-show="items.length < 1" style='text-align:center;'>Time to add some guests!</div>
+            <!-- list start -->
+          <v-list  dense two-line>
+            <v-list-group   v-for="(item, index) in searchResult"  v-model="item.active">
               <template  >
                 <!-- list titles -->
                 <v-list-tile slot="activator"  :key="item.key" avatar @click="" >
@@ -37,16 +58,18 @@
                   <v-spacer ></v-spacer>
 
                   <span v-text="" class="orange--text font-weight-bold pa-2">{{item.type}}</span>   <!-- TODO make dynamic -->
-                  <v-avatar v-if="item.type == 'GROUP'" size="25" class="cyan"><span class="white--text">{{item.groupTotal}}</span></v-avatar>
+                  <v-avatar v-if="item.type == 'GROUP'" size="25" class="cyan"><span class="white--text">5</span></v-avatar>
 
               </div>
+
+
 
           </v-list-tile>
           <v-card  color="">
             <v-divider></v-divider>
             <div class="">
-              <v-btn fab small v-if="key == 'account list'" @click="removeFromList(item.ref, item.name)" class="ml-1 cyan right"> <v-icon>delete</v-icon></v-btn>
-              <v-btn fab small v-if="key == 'account list'" class="ml-1 cyan right"> <v-icon>edit</v-icon></v-btn>
+              <v-btn fab small @click="removeFromList(item.ref, item.name)" class="ml-1 cyan right"> <v-icon>delete</v-icon></v-btn>
+              <v-btn fab small class="ml-1 cyan right"> <v-icon>edit</v-icon></v-btn>
 
             </div>
             <div class="mx-3 my-2">
@@ -64,10 +87,7 @@
               </v-layout>
               <h3 class="mt-3">Added By</h3>
               <span v-text="item.addByName"></span>
-              {{doc}}
-
             </div>
-
 
           </v-card>
         </template>
@@ -78,8 +98,6 @@
 
 </v-layout>
 </v-slide-y-transition>
-
-<div v-show="items.length < 1" >Time to add some guests!</div>
 </v-container>
 </template>
 
@@ -120,16 +138,18 @@ import firebase from "firebase";
 import { db } from "../main";
 import store from '../store'
 import inputNumber from "./inputNumber.vue";
-import listEditAddModal from "./listEditAddModal.vue";
+import listAddAddModal from "./listAddAddModal.vue";
 
 export default {
-  components: { inputNumber, listEditAddModal },
+  components: { inputNumber, listAddAddModal },
   data() {
     return {
       user: firebase.auth().currentUser,
       searchInput: "",
       listconfig: {},
-      items: {},
+      itemId: '',
+      month: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+      items: [],
       searchResult: []
     };
   },
@@ -141,32 +161,41 @@ export default {
     computed: {
       userInfo() {
       return store.state.user
-  }
+  },
+  shared() {
+if (this.listconfig != {}) {
+  return this.listconfig.shared[this.user.uid]
+
+}
+},
+date(val) {
+  let d = this.listconfig.date
+  let s = d.split('/') //dd/mm/yyyy
+
+return  s[0] + ' ' + this.month[s[1]] + ', '  + s[2]
+}
+
   },
   methods: {
     search: function() {
+      // let regex = new RegExp(this.searchInput, "i")
       let s = this.searchInput.toLowerCase().trim();
-let obj = {}
-      for (var segment in this.items) {
-        if (this.items.hasOwnProperty(segment)) {
-          let results = this.items[segment].filter(function(val) {
-            val = JSON.parse(JSON.stringify(val));
-            //return condition for filter
-            if (
-              val.name.toLowerCase().indexOf(s) >= 0 ||
-              val.info.toLowerCase().indexOf(s) >= 0
-            ) {
-              return true;
-            } else {
-              return false;
-            }
-          });
-          obj[segment] = results;
+      let results = this.items.filter(function(val) {
+        val = JSON.parse(JSON.stringify(val));
+        // console.log(JSON.parse(JSON.stringify(val)));
+        if (
+          val.name.toLowerCase().indexOf(s) >= 0 ||
+          val.info.toLowerCase().indexOf(s) >= 0
+        ) {
+          return true;
+        } else {
+          return false;
         }
-      }
-this.searchResult = obj
+      });
+      this.searchResult = results;
     },
     removeFromList: function(id, name) {
+
       db.collection("list_items").doc(id).update({[name]: firebase.firestore.FieldValue.delete()});
       this.refresh();
     },
@@ -177,66 +206,46 @@ this.searchResult = obj
         this.listId = id;
       } // !something valid expression?
       console.log("** refreshing:" + id);
-
       const listRef = db.collection("lists").doc(id);
       const itemsRef = db.collection("list_items");
       //await list config
       let config = await listRef.get();
       let list_config = config.data();
-    //bail if not admin or if admin account is not premium
-      if (!this.userInfo.admin.hasOwnProperty(list_config.accountId)) {
-        return this.bail();
-      }
-      if (!this.userInfo.admin[list_config.accountId].isPremium) {
-        return this.bail();
-      }
 
 
 
-      console.log("still in");
-this.items = {}
-      //get main list item from 'config'
-      let mainGet = await itemsRef.doc(list_config.main_item).get()
-      let main = mainGet.data()
-      this.items['account list'] = []
-// if not empty, loop and push item
-    if (Object.keys(main).length > 0) {
-      for (var item in main) {
-        if (main.hasOwnProperty(item)) {
-          main[item].ref = mainGet.id
-          this.items['account list'].push(main[item])
-        }
-      }
-    }
-      // loop config.shared to get linked items
-      for (var uid in list_config.shared) {
-        if (list_config.shared.hasOwnProperty(uid)) {
-          let itemGet = await itemsRef.doc(list_config.shared[uid].item_id).get()
-          let itemDoc = itemGet.data()
-          // loop the guests and make obj
-          let name = list_config.shared[uid].name || list_config.shared[uid].email
-          this.items[name] = []
-          for (var doc in itemDoc) {
-            if (itemDoc.hasOwnProperty(doc)) {
-              itemDoc[doc].ref = itemGet.id
-          this.items[name].push(itemDoc[doc])
+      console.log("still in yeah");
+
+// Bail if not in shared
+      if (!list_config.shared.hasOwnProperty(this.user.uid)) {  return this.bail()
+}
+// clear and replace old list
+this.items = []
+let itemId = list_config.shared[this.user.uid].item_id
+this.itemId = itemId
+let str = list_config.shared[this.user.uid].item_id
+let itemGet = await itemsRef.doc(str).get()
+let itemDoc = itemGet.data()
+for (var doc in itemDoc) {
+  if (itemDoc.hasOwnProperty(doc)) {
+itemDoc[doc].ref = itemGet.id
+    this.items.push(itemDoc[doc])
   }
 }
-        }
-      }
+      // loop config.shared to get linked items
 
-
+console.log(this.items);
       this.listconfig = list_config;
       this.searchResult = this.items;
     },
     bail: function() {
-      alert("You are not allowed to be here");
-      this.$router.push("/dashboard");
+      alert("Security! You are not allowed to be here my friend.");
+      this.$router.replace("/dashboard");
     }
   },
   created: function() {
     this.refresh();
   },
-  name: "listEdit"
+  name: "listAdd"
 };
 </script>
