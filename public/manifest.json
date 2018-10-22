@@ -1,6 +1,6 @@
 {
-  "name": "cli3-pwa",
-  "short_name": "cli3-pwa",
+  "name": "guestlist-pwa",
+  "short_name": "guestlist-pwa",
   "icons": [
     {
       "src": "/img/icons/android-chrome-192x192.png",
