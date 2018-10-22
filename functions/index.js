@@ -12,7 +12,7 @@ const admin = require("firebase-admin");
 admin.initializeApp();
 
 // Keeps track of the length of the 'likes' child list in a separate property.
-exports.listcount3 = functions.database
+exports.listcount4 = functions.database
   .ref("/stats/{statid}")
   .onWrite(change => {
     const listRef = change.after.ref.parent;
@@ -30,11 +30,11 @@ exports.listcount3 = functions.database
     // Return the promise from countRef.transaction() so our function
     // waits for this async event to complete before it exits.
     return db
-      .transaction(async current => {
+      .transaction(async (current) => {
         let list = await current.get(listRef).once();
         let count = list.data().count + increment;
-
-        current.update(listRef, { count: count });
+        
+        return current.update(listRef, { count: count });
       })
       .then(() => {
         return console.log("Counter updated.");
