@@ -86,6 +86,7 @@ export default {
   props: ["add", "listid"],
   data() {
     return {
+      user: firebase.auth().currentUser,
       dialog: false,
       shareWithInput: "",
       shareModeInput: "",
@@ -113,7 +114,7 @@ clearForm: function () {
 // key is id of list
       delete this.sharedOptions[key];
       db.collection('lists').doc(this.listid).update({['shared.'+key]: firebase.firestore.FieldValue.delete()})
-this.refreshSharedList()
+      this.refreshSharedList()
     },
     addShared: function() {
       var obj = {
@@ -132,7 +133,7 @@ this.refreshSharedList()
     sendInvite: async function() {
 
       var d = this;
-      var user = firebase.auth().currentUser;
+      var user = this.user;
       var shareWithInput = this.shareWithInput.toLowerCase().trim();
 
       if (shareWithInput == '' || this.shareModeInput == '') {
@@ -163,8 +164,9 @@ if (this.shareModeInput == 'ADD' && this.shareAddLimit == "") {
       const inviteRef = db.collection("invites");
         // if no user
   if (userCheck.empty && inviteCheck.empty ) { return alert('in BETA 1.0 you can only invite people who already have an account. Please make sure they register before inviting. This feature will be added soon.')}
-      if (userCheck.empty && inviteCheck.empty ) {
 
+if (userCheck.empty && inviteCheck.empty ) {
+//make list_item_id
         let inv = await inviteRef.add({ email: shareWithInput, name: null, created: new Date() }); //gets more stuff added
         console.log("temp user =>", inv);
         ref = db.collection("users").doc(inv.id);
@@ -187,24 +189,20 @@ if (this.shareModeInput == 'ADD' && this.shareAddLimit == "") {
         }
 
       }
+      const listRef = db.collection("lists").doc(this.listid)
 
       // if not shown on screen (or in vm.data), set shared and make item
       if (true) {
         // if ADD create list_item for this person
-        let newItem = await db.collection('list_items').add({})
-        console.log(newItem);
-        if (!newItem.id) {
-          alert('failed to make list_item')
-        }
+        let newItem = await listRef.collection('list_items').doc(id).set({})
+
         var obj = {
           email: shareWithInput,
           name: name || null,
-          item_id: newItem.id,
           ...this.output
         };
   console.log('id', this.listid);
 
-        const listRef = db.collection("lists").doc(this.listid)
 
         let str = 'shared.' + id // user id
         listRef.update({[str]: obj}) //update list main

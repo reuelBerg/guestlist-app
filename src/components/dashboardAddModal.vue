@@ -135,37 +135,40 @@ clearForm: function () {
   this.add.owner = ""
   this.add.accountId = ""
   this.add.accountName = ""
+
 this.err = ""
 },
     newList: async function() {
       var d = this;
       let add = this.add;
+      add.date = this.computedDateFormatted
+      var listRef = db.collection("lists").doc();
+
 
       if (add.accountName === "") {
         this.err = "You have to pick an account <br>";
         return;
       }
-    
-      if (add.title == "" || add.subTitle == "" || add.date == ""  ) {
+
+      if (add.title == "" || add.subTitle == "" || add.date == "" || add.date == null  ) {
         return this.err = "Enter Title, SubTitle and Date. <br>";
       }
       // vul add object
       var user = this.user;
-      this.add.owner = user.uid;
-      let mainItemId = await db.collection('list_items').add({})
-      this.add.main_item = mainItemId.id;
+      add.owner = user.uid;
+      let mainItemId = await listRef.collection('list_items').add({})
+      add.main_item = mainItemId.id;
 
       //  get id of accountname.
       for (let account_id in this.userInfo.admin) {
-        if (this.userInfo.admin[account_id].name == this.add.accountName) {
+        if (this.userInfo.admin.hasOwnProperty(account_id)) {
           add.accountId = account_id;
         }
       }
 
       // vul database
-      var listRef = db.collection("lists");
 
-      var listDoc = await listRef.add(add); //returns ID in listRef.id
+      var listDoc = await listRef.set(add); //returns ID in listRef.id
       d.$emit("refreshList");
       d.dialog = false;
 this.clearForm()

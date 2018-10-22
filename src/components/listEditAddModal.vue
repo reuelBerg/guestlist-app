@@ -45,6 +45,8 @@
 <script scoped>
 import firebase from "firebase";
 import { db } from "../main";
+import store from "../store";
+
 
 export default {
   name: "listEditAddModal",
@@ -64,6 +66,11 @@ export default {
       }
     };
   },
+  computed: {
+    userInfo() {
+      return store.state.user;
+    }
+},
   methods: {
     clear: function(option) {
       this.add.options[option] = null;
@@ -73,6 +80,7 @@ export default {
         name: "",
         info: "",
         type: "",
+        groupTotal: '',
         options: {}
       };
       this.error = ''
@@ -119,7 +127,6 @@ if (this.add.name.indexOf('..') != -1 || this.add.name.indexOf('...') != -1 || t
   this.error = "Name cannot contain '..' <br>";
   return;
 }
-console.log(this.add.name.charAt(0))
 
 if (this.add.name.charAt(0) == '.' || this.add.name.charAt(this.add.name.length -1) == '.') {
   this.error = "Name cannot start or end with '.' <br>";
@@ -130,12 +137,13 @@ if (this.add.type == "GROUP" && this.add.groupTotal == '') {
 }
       // add user id to this new item
       this.add.addById = user.uid;
-      this.add.addByName = user.fullName != undefined ? user.fullName : user.email;
+      this.add.addByName = this.userInfo.fullName != undefined ? this.userInfo.fullName : user.email;
+      this.add.count = 0
 
       var j = JSON.parse(JSON.stringify(this.add));
 
       let str = this.options.main_item
-      const itemAdd = db .collection("list_items").doc(str).update({[this.add.name]:this.add});
+      const itemAdd = db.collection('lists').doc(this.listId) .collection("list_items").doc(str).update({[this.add.name]:this.add});
       let item = itemAdd.id;
       console.log(item);
       this.$emit("refreshList");

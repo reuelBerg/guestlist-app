@@ -230,29 +230,21 @@ this.searchResult = obj
       this.$router.push({ name: "active", params: { id } });
     },
     removeListItem: async function(item) {
+      const listRef = db.collection("lists").doc('6hNWz04w1XVBbeDNJ1HR');
+
       console.log("itemparam", item);
       //DELETE ENTIRE LIST AND ALL ITEMS
-      var list = await db
-        .collection("lists")
-        .doc(item)
-        .get();
-      console.log("data ", list.data());
-      //get list_item id's of 'main' and 'adders'
-      let shared = list.data().shared;
-      let itemRef = db.collection("list_items");
+
+      let itemRef = listRef.collection("list_items");
+      let listItems = await itemRef.get()
       var batch = db.batch();
-      //delete main item
-      console.log("main", list.data().main_item);
-      let mainRef = itemRef.doc(list.data().main_item);
-      batch.delete(mainRef);
 
       // loop to delete linked items
-      for (var person in shared) {
-        if (shared.hasOwnProperty(person)) {
-          if (shared[person].mode === "ADD") {
-            let shareRef = itemRef.doc(shared[person].item_id);
-            batch.delete(shareRef);
-          }
+      for (var list in listItems) {
+console.log(list);
+        if (list.exists) {
+            let item = itemRef.doc(list.id);
+            batch.delete(item);
         }
       }
 
@@ -262,9 +254,7 @@ this.searchResult = obj
             .doc(item)
             .delete();
         });
-        db.collection("lists")
-          .doc(item)
-          .delete();
+
         this.refresh();
       } catch (e) {
         alert("failed to delete connected list_items");
@@ -285,28 +275,22 @@ this.searchResult = obj
         console.log("list ", list.docs);
 
         // add permission mode and id to object for later reference
+        objj['company lists'] = []
+
         for (let doc of list.docs) {
-          objj['company lists'] = []
           objj['company lists'].push({ id: doc.id, permission: "ADMIN", ...doc.data() });
         }
       }
       //get lists where person is 'activator'
-        // let act = await listRef.where("activator", "array-contains", user.uid).get();
-        // console.log("activator ", act.docs);
-        //
-        // // add permission mode and id to object for later reference
-        // for (let doc of act.docs) {
-        // objj['lists you can activate'] = []
-        //   objj['lists you can activate'].push({ id: doc.id, permission: "ADMIN", ...doc.data() });
-        // }
 
         let sharedActivator = await listRef
-          .where("shared." + user.uid + ".mode", ">", "")
+          .where("shared." + user.uid + ".mode", "==", "ACTIVATOR")
           .get();
+          objj['lists you can activate'] = []
+
         for (let share of sharedActivator.docs) {
           let sharedoc = share.data()
           console.log("share ", sharedoc);
-  objj['lists you can activate'] = []
           objj['lists you can activate'].push({
             id: share.id,
             permission: "ACTIVATOR",
@@ -318,10 +302,10 @@ this.searchResult = obj
       let sharedAdd = await listRef
         .where("shared." + user.uid + ".mode", "==", "ADD")
         .get();
+        objj['lists you can add'] = []
       for (let share of sharedAdd.docs) {
         let sharedoc = share.data()
         console.log("share ", sharedoc);
-objj['lists you can add'] = []
         objj['lists you can add'].push({
           id: share.id,
           permission: 'ADD',
@@ -331,12 +315,33 @@ objj['lists you can add'] = []
 
       if (!userInfo.admin || Object.keys(userInfo.admin).length == 0) {
         this.allowActions = false;
+        console.log('no .admin in userInfo', userInfo);
       }
 console.log(objj);
+for (var seg in objj) {
+  if (objj.hasOwnProperty(seg)) {
+    objj[seg] = this.sortOnDate(objj[seg])
+  }
+}
       // push to view
       d.items = d.searchResult = {};
       d.items = objj;
       d.searchResult = objj;
+    },
+    sortOnDate: function(arr) {
+let sorted = arr.sort((a, b) => {
+console.log('a', a.date);
+console.log(b.date);
+  let ad = a.date.split('/') // returns [dd, mm, yyy]
+  let bd = b.date.split('/') // returns [dd, mm, yyy]
+
+a = new Date(ad[2], ad[1]-1, ad[0])
+b = new Date(bd[2], bd[1]-1, bd[0])
+console.log(a, ' ', b);
+return a>b ? 1 : a<b ? -1 : 0;
+
+})
+return sorted
     }
   },
   //no real function -remove?

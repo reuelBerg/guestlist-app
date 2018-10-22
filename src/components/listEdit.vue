@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid class="mt-0 py-0" >
+  <v-container fluid class="mt-0 py-0" style="background: linear-gradient(grey, orange)">
     <v-btn  absolute bottom right fab color="black" style=" bottom: -20px;" :large="$vuetify.breakpoint.smAndUp" @click="refresh" >
       <v-icon :large="$vuetify.breakpoint.smOnly" >autorenew</v-icon>
     </v-btn>
@@ -17,7 +17,7 @@
             </v-input>
             <v-spacer ></v-spacer>
           </v-toolbar>
-          <v-list v-for="(doc, key) in items"  :key="key" dense two-line>
+          <v-list v-for="(doc, key) in searchResult"  :key="key" dense two-line>
             <v-subheader  class="white--text blue-grey">{{key.toUpperCase()}}</v-subheader>
             <v-list-group   v-for="(item, index) in doc"  v-model="item.active">
               <template  >
@@ -59,7 +59,7 @@
               <v-layout row wrap  align-content-start  class=""  >
                 <v-flex   v-for="(option, key) in item.options" :key="key" class="white mr-1 pa-1" :style="option == 0 ? 'opacity: 0.2;' : 'opacity: 1;'" style="text-align:center; min-width:50px!important;height:50px!important; flex:unset;">
                   <span class="font-weight-bold grey--text text--darken-2" v-text="key"></span><br>
-                  <v-avatar tile class="grey darken-2" size="25" icon><span class="white--text font-weight-bold" v-text="option"></span></v-avatar>
+                  <v-avatar class="grey darken-2" style="position: relative; top:-3px" size="25" icon><span class="white--text font-weight-bold" v-text="option"></span></v-avatar>
                 </v-flex>
               </v-layout>
               <h3 class="mt-3">Added By</h3>
@@ -126,9 +126,9 @@ export default {
   components: { inputNumber, listEditAddModal },
   data() {
     return {
-      user: firebase.auth().currentUser,
       searchInput: "",
       listconfig: {},
+      listId: this.$route.params.id,
       items: {},
       searchResult: []
     };
@@ -164,14 +164,19 @@ let obj = {}
           obj[segment] = results;
         }
       }
+      // console.log('searching', obj);
+
 this.searchResult = obj
     },
     removeFromList: function(id, name) {
-      db.collection("list_items").doc(id).update({[name]: firebase.firestore.FieldValue.delete()});
+      db.collection("lists").doc(this.listId).collection("list_items").doc(id).update({[name]: firebase.firestore.FieldValue.delete()});
       this.refresh();
     },
     refresh: async function() {
-      var id = this.$route.params.id;
+      var id = this.listId; //list parent id
+      if (!this.userInfo.fullName) {
+return
+      }
       let userInfo = this.userInfo;
       if (!this.listId) {
         this.listId = id;
@@ -179,7 +184,7 @@ this.searchResult = obj
       console.log("** refreshing:" + id);
 
       const listRef = db.collection("lists").doc(id);
-      const itemsRef = db.collection("list_items");
+      const itemsRef = listRef.collection("list_items");
       //await list config
       let config = await listRef.get();
       let list_config = config.data();
@@ -187,6 +192,7 @@ this.searchResult = obj
       if (!this.userInfo.admin.hasOwnProperty(list_config.accountId)) {
         return this.bail();
       }
+//if not premium
       if (!this.userInfo.admin[list_config.accountId].isPremium) {
         return this.bail();
       }
@@ -195,40 +201,34 @@ this.searchResult = obj
 
       console.log("still in");
 this.items = {}
-      //get main list item from 'config'
-      let mainGet = await itemsRef.doc(list_config.main_item).get()
-      let main = mainGet.data()
-      this.items['account list'] = []
-// if not empty, loop and push item
-    if (Object.keys(main).length > 0) {
-      for (var item in main) {
-        if (main.hasOwnProperty(item)) {
-          main[item].ref = mainGet.id
-          this.items['account list'].push(main[item])
-        }
-      }
-    }
+let itemArr = []
+
+
       // loop config.shared to get linked items
-      for (var uid in list_config.shared) {
-        if (list_config.shared.hasOwnProperty(uid)) {
-          let itemGet = await itemsRef.doc(list_config.shared[uid].item_id).get()
-          let itemDoc = itemGet.data()
-          // loop the guests and make obj
-          let name = list_config.shared[uid].name || list_config.shared[uid].email
-          this.items[name] = []
-          for (var doc in itemDoc) {
-            if (itemDoc.hasOwnProperty(doc)) {
-              itemDoc[doc].ref = itemGet.id
-          this.items[name].push(itemDoc[doc])
-  }
-}
+          let usr = firebase.auth().currentUser
+          // get all the lists connected, main and shared
+          let itemGet = await itemsRef.get()
+          for (let items of itemGet.docs) { //loop each list_item doc
+            let itemDoc = items.data()
+            // loop the guests and make obj
+            let name;
+            if (this.userInfo.admin.hasOwnProperty(list_config.accountId)) { name = 'Account List' }
+            else { name = list_config.shared[usr.uid].name || list_config.shared[usr.uid].email}
+
+            for (var doc in itemDoc) {
+              if (itemDoc.hasOwnProperty(doc)) {
+            itemDoc[doc].ref = itemGet.id
+            itemArr.push(itemDoc[doc])
+            this.items[name] = itemArr
+          }
         }
-      }
+          }
 
 
       this.listconfig = list_config;
       this.searchResult = this.items;
     },
+
     bail: function() {
       alert("You are not allowed to be here");
       this.$router.push("/dashboard");

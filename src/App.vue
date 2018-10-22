@@ -1,7 +1,7 @@
 <template>
-  <v-app dark style="background:url(https://www.4av.nl/wp-content/uploads/20170409_REBIRTH_2001_Vincent_2994.jpg)">
+  <v-app dark >
 
-    <v-toolbar app color="grey darken-4" >
+    <v-toolbar app color="blue-grey darken-3" >
       <!-- <v-toolbar-title v-text="title"></v-toolbar-title> -->
 
 <v-slide-x-transition  tag="div">
