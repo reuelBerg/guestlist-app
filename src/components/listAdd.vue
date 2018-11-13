@@ -1,31 +1,33 @@
 <template>
-  <v-container fluid class="mt-0 py-0" style="background: linear-gradient(grey, grey, purple)">
-    <v-btn  fixed bottom right fab color="black" style=" bottom: -20px;" :large="$vuetify.breakpoint.smAndUp" @click="refresh" >
-      <v-icon :large="$vuetify.breakpoint.smOnly" >autorenew</v-icon>
+  <v-container fluid class="mt-0 py-0" >
+    <v-btn  fixed bottom right fab class="barcolor darken-4 white--text" style=" bottom: 20px;" :large="$vuetify.breakpoint.smAndUp" @click="refresh" >
+      <v-icon :large="$vuetify.breakpoint.smAndUp" >autorenew</v-icon>
     </v-btn>
-    <listAddAddModal v-if="optionCount"  :listId="itemId" :count="optionCount" :options="listconfig" @refreshList="refresh"></listAddAddModal>
+    <listModalAdd   :listId="itemId" :count="optionCount" :options="listconfig" @refreshList="refresh"></listModalAdd>
     <!-- =============================================  HEADER INFO ===================================================== -->
 
     <v-slide-y-transition mode="out-in">
       <v-layout row wrap justify-center>
         <!-- top info part -->
 
-        <v-card d-flex class="pa-3" style="max-width:800px;  width:100%; ">
-          <h3 style="">You are invited to add <span v-if="listconfig" class="cyan--text">{{listconfig.shared[user.uid].addLimit}}</span>
-            guests to <br class="hidden-sm-and-up"> <span class="cyan--text">{{listconfig.title}}</span> on <span v-text="date" class=" cyan--text"></span></h3>
-          </v-card>
-          <v-card d-flex class="pa-3" style="max-width:800px; width:100%; ">
-            <v-btn class="" @click="showInfo = !showInfo" icon ><v-icon class="grey--text">{{showInfo ? 'visibility_off' : 'visibility' }}</v-icon></v-btn>
+        <v-card d-flex class="px-3 py-2" style="max-width:800px;  width:100%; text-align:center;">
 
-            <h4 class="mb-2">You have the following options left to distribute.</h4>
+          <h3  class="grey--text text--darken-2 subheading">You are invited to add <span v-if="listconfig" class="primary--text">{{listconfig.shared[user.uid].addLimit}}</span>
+            guests to <br class="hidden-sm-and-up"> <span class="primary--text">{{listconfig.title}}</span> on <span v-text="date" class=" primary--text"></span></h3>
+
+</v-card>
+          <v-card   d-flex class="px-3 py-1" style="max-width:800px; width:100%; text-align:center;">
+            <v-btn  absolute top right  @click="showInfo = !showInfo" icon ><v-icon class="grey--text">{{showInfo ? 'visibility_off' : 'info' }} </v-icon></v-btn>
+
+            <h4  v-if="listconfig.shared[user.uid].options.hasOwnProperty() && showInfo" class="mb-2 grey--text font-weight-medium caption text--darken-1">You have the following options left to distribute.</h4>
 
 
-            <div  :style="$vuetify.breakpoint.xsOnly ? 'width:48%;' : 'width:19.9%;'" style="float:left; border: 1px solid lightblue; border-radius: 4px; margin-right:5px; margin-bottom:2px;"
-              v-if="listconfig && showInfo" v-for="(item, key) in listconfig.shared[user.uid].options" class="pa-1 blue-grey darken-4 elevation-3"
+            <div v-if="listconfig && showInfo" :style="$vuetify.breakpoint.xsOnly ? 'width:48%;' : 'width:19.9%;'" style="float:left; border: 1px solid lightblue; border-radius: 4px; margin-right:5px; margin-bottom:2px;"
+               v-for="(item, key) in listconfig.shared[user.uid].options" :key="key" class="pa-1 barcolor darken-2 elevation-3"
               >
-              <span style="float:left;" class="font-weight-bold">{{key.toUpperCase()}}</span>
-              <span style="float:right;" class="">{{!optionCount[key] ? 0 : optionCount[key]}}/{{item}}</span>
-              <v-progress-linear color="cyan darken-2" class="ma-0" style="width:100%;" :value="100 / item * optionCount[key]"></v-progress-linear>
+              <span style="float:left;" class="font-weight-bold white--text">{{key.toUpperCase()}}</span>
+              <span style="float:right;" class="white--text">{{!optionCount[key] ? 0 : optionCount[key]}}/{{item}}</span>
+              <v-progress-linear color="primary " class="ma-0" style="width:100%;" :value="optionCount[key] > 0 ? 100 / item * optionCount[key] : 0"></v-progress-linear>
 
             </div>
 
@@ -33,78 +35,89 @@
 
           <!-- =============================================  TOOLBAR LIST ===================================================== -->
           <!-- toolbar -->
-          <v-card d-block style="max-width:800px; width:100%">
-            <v-toolbar  flat color="grey darken-3" dark >
-              <v-spacer></v-spacer>
-              <!-- search -->
-              <v-input color="" style="max-width: 240px; height:32px;  border-radius:3px; background: #353535;" >
-                <input @keyup="search" class=" white--text pa-2 " style=" " type="text" placeholder="Search names" v-model="searchInput">
-                <v-icon v-show="searchInput != ''" small class="" @click="searchInput = ''">cancel</v-icon>
+          <v-card d-block style="max-width:800px; width:100%" class="mt-2">
+
+            <v-toolbar  flat color="barcolor darken-2" dark >
+              <v-input class="barcolor darken-3 title" style="height:32px;  border-radius:3px; background: #353535;" >
+                <input @keyup="search" class=" white--text pa-2 " style=" width:90%" type="text" placeholder="Search..." v-model="searchInput">
+                <v-icon v-show="searchInput != ''" small class="pr-2" @click="searchInput = ''">cancel</v-icon>
               </v-input>
               <v-spacer ></v-spacer>
+              <v-avatar size="30"  class="barcolor darken-3  subheading "><span v-text="items.length"></span></v-avatar>
             </v-toolbar>
-            <div v-show="items.length < 1" style='text-align:center;'>Time to add some guests!</div>
+            <div v-show="items.length < 1" class="font-italic grey--text pa-3" style='text-align:center;'>Time to add some guests!</div>
             <!-- list start -->
-            <v-list  dense two-line>
-              <v-list-group   v-for="(item, index) in searchResult"  v-model="item.active">
-                <template  >
+            <transition-group group name="list" tag="v-list" light class="barcolor lighten-5"  dense two-line>
+<!-- TODO there item.key sa;me as fieldKey? -->
+              <v-list-group   v-for="(item, index) in searchResult" :key="item.key"  v-model="item.active">
                   <!-- list titles -->
-                  <v-list-tile slot="activator"  :key="item.key" avatar @click="" >
-                    <v-list-tile-avatar class="hidden-xs-only" color="blue-grey">
-                      <span v-text="item.name.charAt(0).toUpperCase()" class=" "></span>
+                  <v-list-tile slot="activator" :key="item.key"  avatar @click="" >
+                    <v-list-tile-avatar class="hidden-xs-only" color="barcolor">
+                      <span v-text="item.name.charAt(0).toUpperCase()" class="white--text subheading "></span>
                     </v-list-tile-avatar>
 
                     <v-list-tile-content >
-                      <v-list-tile-title class="font-weight-bold" v-text="item.name"></v-list-tile-title>
-                      <!-- TODO: make subtitle that shows who added this -->
-                      <v-list-tile-sub-title >
-
-                        <span v-text="" class="grey--text font-weight-bold ">{{item.type}}</span>   <!-- TODO make dynamic -->
-                        <span v-if="item.type == 'GROUP'" size="25" class="grey--text ml-1">{{item.groupTotal}}</span></span>
+                      <v-list-tile-title class="" v-text="item.name"></v-list-tile-title>
+                      <v-list-tile-sub-title v-text="item.info">
                       </v-list-tile-sub-title>
 
                     </v-list-tile-content>
+                    <v-spacer ></v-spacer>
 
-
-
-                  </div>
-
+  <v-layout column wrap align-center class="ma-0 pa-0" style="text-align:end; ">
+  <span v-text="" class="orange--text font-weight-bold py-0">{{item.type}}</span>
+  <span v-if="item.type == 'GROUP'" class="grey--text"><span v-text="item.count"></span>/{{item.groupTotal}}</span>   <!-- TODO make dynamic -->
+  </v-layout>
 
 
                 </v-list-tile>
                 <v-card  color="">
                   <v-divider></v-divider>
                   <div class="">
-                    <v-btn fab small @click="removeFromList(item.ref, item.name)" class="ml-1 cyan right"> <v-icon>delete</v-icon></v-btn>
-                    <v-btn fab small class="ml-1 cyan right"> <v-icon>edit</v-icon></v-btn>
+                    <v-btn  fab small  @click="removeDialogItemId = [item.ref, item.fieldKey]; removeDialog = true;" class="ml-1 grey lighten-1 grey--text text--darken-2 right"> <v-icon large style="font-size:27px;">delete</v-icon></v-btn>
+                    <!-- <v-btn fab small class="ml-1 primary right"> <v-icon>edit</v-icon></v-btn> -->
 
                   </div>
-                  <div class="mx-3 my-2">
-                    <span v-text="" class="orange--text font-weight-bold headline">{{item.type}}</span>   <!-- TODO make dynamic -->
-                    <br>
-                    <span class="subheader">{{item.info}}</span>
-                    <br>
+                  <div class="mx-3  py-4 my-2">
+                    <div class="pl-2" style=" border-left: 6px solid teal">
+                      <span v-text="" class="primary--text text--darken-1 font-weight-bold headline">{{item.type}}</span>   <!-- TODO make dynamic -->
+                      <br v-if="item.type">
+                      <span v-if="item.name" class=" primary--text text--darken-3 subheading font-weight-medium">{{item.name.toUpperCase()}}</span>
+                      <br v-if="item.info">
+                      <span v-if="item.info"  class=" primary--text text--darken-2 subheading font-italic">{{item.info}}</span>
+                    </div>
 
-                    <h3 class="mt-3">Options</h3>
-                    <v-layout row wrap  align-content-start  class=""  >
-                      <v-flex  v-for="(option, key) in item.options"  v-if="option > 0" :key="key" class="white mr-1 pa-1" :style="option == 0 ? 'opacity: 0.2;' : 'opacity: 1;'" style="text-align:center; min-width:50px!important;height:50px!important; flex:unset;">
-                        <span class="font-weight-bold grey--text text--darken-2" v-text="key"></span><br>
-                        <v-avatar class="grey darken-2 " style="position: relative; top:-3px" size="25" icon><span class="white--text font-weight-bold" v-text="option"></span></v-avatar>
-                      </v-flex>
-                    </v-layout>
-                    <h3 class="mt-3">Added By</h3>
-                    <span v-text="item.addByName"></span>
+                    <div class="mt-1 pl-2" style=" border-left: 6px solid pink!important; width:100%" >
+                      <h4 v-show="Object.keys(item.options).length" class="subheading pink--text text--darken-4 font-weight-medium pl-0 mt-2" >Hand Outs</h4>
+                      <v-layout row wrap  align-content-start  class=""  >
+                        <v-flex v-if="option > 0"  v-for="(option, key) in item.options" :key="key" class=" pink darken-4 elevation-1 mt-1 mr-1 pa-2" :style="option == 0 ? 'opacity: 0.2;' : 'opacity: 1;'" style="text-align:center; min-width:65px!important;height:65px!important;   border-radius:3px; flex:unset;">
+                          <span class="font-weight-bold white--text text--darken-4" v-text="key.toUpperCase()"></span><br>
+      <!-- <span class="pink--text font-weight-bold headline" v-text="option"></span> -->
+                          <v-avatar class="pink darken-2  headline" style="position: relative; top:-1px" size="34" icon><span class="white--text font-weight-bold" v-text="option"></span></v-avatar>
+                        </v-flex>
+                      </v-layout>
+                    </div>
+
                   </div>
 
                 </v-card>
-              </template>
             </v-list-group>
-          </v-list>
+          </transition-group>
 
         </v-card>
 
       </v-layout>
     </v-slide-y-transition>
+    <v-dialog v-model="removeDialog" persistent max-width="320">
+      <v-card dark class="barcolor pa-4">
+        <v-card-title class="headline font-weight-bold">Delete guest?</v-card-title>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="white " flat @click.native="removeDialog = false">cancel</v-btn>
+          <v-btn outline color="white" flat @click.native="removeDialog = false;  removeFromList(removeDialogItemId[0], removeDialogItemId[1])">delete</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -145,14 +158,16 @@ import firebase from "firebase";
 import { db } from "../main";
 import store from '../store'
 import inputNumber from "./inputNumber.vue";
-import listAddAddModal from "./listAddAddModal.vue";
+import listModalAdd from "./listModalAdd.vue";
 
 export default {
-  components: { inputNumber, listAddAddModal },
+  components: { inputNumber, listModalAdd },
   data() {
     return {
       user: firebase.auth().currentUser,
       showInfo: true,
+      removeDialog: false,
+      removeDialogItemId: [],
       optionCount: {},
       searchInput: "",
       listconfig: {},
@@ -164,7 +179,7 @@ export default {
   },
   watch: {
     userInfo: function () {
-      // this.refresh()
+      this.refresh()
     },
     items: function () {
       let obj = {}
@@ -172,14 +187,12 @@ export default {
         let count = 0;
         for (var i = 0; i < this.items.length; i++) {
 let val = this.items[i].options[opt] != undefined ? this.items[i].options[opt] : 0
-console.log(val);
           if (val != undefined) {
             count = count + parseInt(val)
           }
           obj[opt] = count
         }
       }
-      console.log('optionCount', obj);
       return  this.optionCount = obj
     },
   },
@@ -216,9 +229,9 @@ console.log(val);
       });
       this.searchResult = results;
     },
-    removeFromList: function(id, name) {
+    removeFromList: function(id, fieldKey) {
       let list = this.$route.params.id;
-      db.collection('lists').doc(list).collection("list_items").doc(id).update({[name]: firebase.firestore.FieldValue.delete()});
+      db.collection('lists').doc(list).collection("list_items").doc(id).update({[fieldKey]: firebase.firestore.FieldValue.delete()});
       this.refresh();
     },
     refresh: async function() {
@@ -239,7 +252,7 @@ console.log(val);
 
       console.log("still in yeah");
       this.items = []
-      let itemGet = await itemsRef.doc(this.user.uid).get()
+      let itemGet = await itemsRef.doc(window.btoa(this.user.email)).get()
       if (itemGet == undefined) {
         return this.bail()
       }

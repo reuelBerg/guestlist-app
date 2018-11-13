@@ -7,7 +7,6 @@ import { register } from "register-service-worker";
 // register(`http://192.168.1.102:8887/service-worker.js`}
 
 if (process.env.NODE_ENV == "production") {
-  console.log('hello');
   register(`${process.env.BASE_URL}service-worker.js`, {
     ready() {
       console.log(

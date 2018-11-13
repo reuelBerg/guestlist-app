@@ -1,9 +1,9 @@
 <template>
-  <v-container fluid style="text-align:center; background: url(https://cdn.wonderfulengineering.com/wp-content/uploads/2014/06/galaxy-wallpapers-10.jpg)">
-    <h1>AccountSettings</h1>
-    <p v-if="welcomeMessage">Welcome to your account settings page. <span v-show="!showAccountBlock">You have no  account connected. Go <span class="cyan--text font-weight-bold" style="">premium</span> or start a free trial!</span> </p>
+  <v-container fluid style="text-align:center;">
+    <h1>Account Settings</h1>
+    <p v-if="welcomeMessage">Welcome to your account settings page. <span v-show="!showAccountBlock">You have no  account connected. Go <span class="primary--text font-weight-bold" style="">premium</span> or start a free trial!</span> </p>
     <br>
-    <v-card  v-show="showAccountBlock" class="pa-3">
+    <v-card dark v-show="showAccountBlock" class="pa-3 primary darken-3">
       <div  class="" style="text-align:left;">
         <span  class="label">Company Name:</span><span v-text="accountInfo.accountName"></span> <br>
         <span  class="label">Subscription:</span><span v-text="accountInfo.subscription"></span> <br>
@@ -13,15 +13,18 @@
       </div>
 
       <div class="">
-        <v-text-field v-model="inviteAdmin" placeholder="email to invite" type="email"></v-text-field>
-        <v-btn @click="sendInvite()"> invite as admin</v-btn>
+        <v-text-field v-model="inviteAdmin" placeholder="'anna@new-admin.com'" type="email"></v-text-field>
+        <v-btn @click.stop.prevent="sendInvite()">invite as admin</v-btn>
       </div>
-      <div class="grey">
-        <v-list>
+      <div >
+        <v-list dark class="primary darken-4">
+          <v-subheader class="subheading white--text">Current admins</v-subheader>
+
           <v-list-tile v-for="(admin, key) in accountInfo.admins" :key="key">
             <v-list-tile-content>
               <v-list-tile-title >{{admin.email}}</v-list-tile-title>
             </v-list-tile-content>
+          <v-btn small @click="removeAdmin(key)">remove</v-btn>
           </v-list-tile>
         </v-list>
       </div>
@@ -35,14 +38,14 @@
       <v-text-field v-model="form.city" placeholder="city"></v-text-field>
       <v-text-field v-model="form.country" placeholder="country"></v-text-field>
 
-      <v-card class="pa-3 cyan--text text--darken-1" style="width:200px; border-radius: 5px; background: white; text-align:center; border: 12px ridge aliceblue; box-shadow: 4px 4px 15px grey inset; background:aliceblue " >
+      <v-card class="pa-3 primary darken-3" style="width:200px; border-radius: 5px; background: white; text-align:center; border: 12px ridge aliceblue; box-shadow: 4px 4px 15px grey inset; background:aliceblue " >
         <h2 class="label">5-day Trial</h2> <br>
         <span class="label">Admins</span><span>3</span> <br>
         <span class="label">Devices</span><span>Unlimited</span> <br>
         <span class="label">Invite Users</span><span>Activate/Add</span> <br>
         <span class="label">Free Chipotle</span><span>30pcs/month</span> <br>
 
-        <v-btn @click="subscribe" class="cyan elevation-5">Pick me!</v-btn>
+        <v-btn @click="subscribe" class="primary elevation-5">Pick me!</v-btn>
 
       </v-card>
 
@@ -95,7 +98,34 @@ computed: {
   }
 },
   methods: {
+    removeAdmin: async function(id) {
+let d = this
+      try {
+        let accountId = this.accountInfo.accountId;
+        const accountRef = db.collection("accounts").doc(accountId);
+        const ref = db.collection("users").doc(id);
+        return await db.runTransaction( async transaction => {
+           let str = "admins." + id;
+          // make admins object for /accounts
+          transaction.update(accountRef, { [str]: firebase.firestore.FieldValue.delete()});
+          let userStr = "admin." + accountId;
+          console.log(userStr);
+
+           transaction.update(ref, {[userStr]: firebase.firestore.FieldValue.delete()});
+
+
+
+        }).then(() => {
+          d.getUser();
+          alert("user removed");
+        });
+      } catch (e) {
+        console.log("remove admin failed", e);
+        alert("remove admin failed", e);
+      }
+    },
     sendInvite: async function() {
+let d = this
       if (this.accountInfo == {}) {
         return;
       }
@@ -105,7 +135,7 @@ computed: {
         return alert("max admins reached");
       }
       //get inputValueue
-      let inputValue = this.inviteAdmin;
+      let inputValue = this.inviteAdmin.toLowerCase().trim();
       // check if inputValueue is owner
       if (inputValue == this.user.email) {
         return alert("You cannot invite yourself");
@@ -124,6 +154,7 @@ computed: {
       let id;
       let name = null;
       // to add to accounts admins obj
+      console.log(userCheck.empty);
       if (userCheck.empty ) { return alert('in BETA 1.0 you can only invite people who already have an account. Please make sure they register before inviting. This feature will be added soon.')}
 
       if (userCheck.empty && inviteCheck.empty) {
@@ -137,12 +168,12 @@ computed: {
           let u = userCheck.docs[0];
           console.log("user =>", userCheck.docs[0].id);
 
-          ref = db.collection('invites').doc(u.id);
+          ref = db.collection('users').doc(u.id);
           id = u.id;
           name = u.data().fullName;
         } else if (!inviteCheck.empty) {
           let u = inviteCheck.docs[0];
-          console.log("user =>", inviteCheck.docs[0].id);
+          console.log("user temp =>", inviteCheck.docs[0].id);
 
           ref = inviteCheck.doc(u.id);
           id = u.id;
@@ -152,24 +183,25 @@ computed: {
       console.log("hey");
 
       const accountRef = db.collection("accounts").doc(accountId);
-
       try {
         await db.runTransaction(async transaction => {
-          console.log("ref  ", ref, "id  ", id, "name  ", name);
+          console.log("ref  ", ref.path, "id  ", id, "name  ", name);
           let str = "admins." + id;
           // make admins object for /accounts
-          let obj = { email: inputValue, name: name };
+          let obj = { email: inputValue, name: name || null };
           transaction.update(accountRef, { [str]: obj });
-
           // userObj.admin[accountId] = {name: this.accountInfo.accountName, isPremium: true} //can be better
           let userStr = "admin." + accountId;
+          console.log(userStr);
+
           transaction.update(ref, {
-            [userStr]: { name: this.accountInfo.accountName, isPremium: true, created: new Date() },
-            ...userObj
+            [userStr]: { name: this.accountInfo.accountName, isPremium: true, created: new Date() }
           });
 
-          this.getUser();
-          alert("user invited");
+          
+        }).then(() => {
+          d.getUser();
+          alert("user removed");
         });
       } catch (e) {
         console.log("transaction failed", e);

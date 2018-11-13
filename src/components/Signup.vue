@@ -1,21 +1,22 @@
 <template>
   <v-layout row justify-center>
-  <v-card   class="ma-4" style="max-width:500px; ">
+  <v-card   dark class="ma-3 pa-4 barcolor darken-2" style="min-width:300px; width:40%" >
 
   <v-container >
     <v-slide-y-transition mode="out-in">
       <v-layout column align-center>
         <h2 class="headline">Sign up</h2>
-        <h4 class="subheader">Please register your account.</h4>
+        <h4 style="max-width: 60%; text-align:center;" class="subheader mb-2">Please register your account or <router-link :to="{ name: 'login' }">log in</router-link> here</h4>
 
-<v-text-field v-model="email" placeholder="your email"></v-text-field>
-<v-text-field v-model="firstName" placeholder="your first name"></v-text-field>
-<v-text-field v-model="lastName" placeholder="your last name"></v-text-field>
 
-<v-text-field v-model="password" placeholder="create password" type="password"></v-text-field>
-<v-text-field v-model="passwordCheck" placeholder="verify password" type="password"></v-text-field>
+<v-text-field v-model="email" label="your email"></v-text-field>
+<v-text-field v-model="firstName" label="first name"></v-text-field>
+<v-text-field v-model="lastName" label="last name"></v-text-field>
 
-<v-btn small  @click.prevent="signUp" color="cyan" >sign up</v-btn>
+<v-text-field v-model="password" label="create password" type="password"></v-text-field>
+<v-text-field v-model="passwordCheck" label="verify password" type="password"></v-text-field>
+
+<v-btn small  @click.prevent="signUp" color="primary" >sign up</v-btn>
 <span class="red--text" >{{err}}</span>
 
       </v-layout>

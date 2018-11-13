@@ -1,22 +1,23 @@
 <template>
-  <v-dialog v-model="dialog" persistent class="">
-    <v-btn :disabled="disable" fixed absolute bottom right fab class="black mb-2"
-    style="bottom: 85px;" slot="activator"
+  <v-dialog v-model="dialog" persistent class="ma-0">
+    <v-btn :disabled="disable" fixed absolute bottom right fab class="barcolor darken-4 white--text mb-2"
+    :style="$vuetify.breakpoint.xsOnly ? 'bottom: 80px;' :'bottom: 100px;'" slot="activator"
     :large="$vuetify.breakpoint.smAndUp">
     <v-icon :large="$vuetify.breakpoint.smAndUp" style="display:flex ">add</v-icon>
   </v-btn>
-
   <!-- add name to list ============================================================================  add name to list -->
-  <v-card transition="slide-y-reverse-transition" class="pa-3">
+  <v-card dark transition="slide-y-reverse-transition" class="pa-3 barcolor">
+
     <h2 class="mt-3">Create a new list</h2>
     <v-select
-    v-if="userInfo"
-    :items="userInfo.accounts"
+    :items="accounts"
+    no-data-text="no premium accounts"
     label="pick account"
     v-model="add.accountName"
     ></v-select>
-    <v-text-field v-model="add.title" placeholder="title"></v-text-field>
-    <v-text-field v-model="add.subTitle" placeholder="reference e.g. 'Guests PreParty'"></v-text-field>
+    <!-- <v-text-field  disabled v-model="add.accountName" label="account"></v-text-field> -->
+    <v-text-field v-model="add.title" label="title"></v-text-field>
+    <v-text-field v-model="add.subTitle" label="list reference"></v-text-field>
     <v-menu
     ref="menu"
     :close-on-content-click="false"
@@ -32,7 +33,7 @@
     <v-text-field
     slot="activator"
     v-model="add.date"
-    placeholder="pick a date"
+    label="pick a date"
     append-icon="event"
     readonly
     ></v-text-field>
@@ -43,10 +44,11 @@
     </v-date-picker>
   </v-menu>
   <div class="d-inline-block">
-    <v-text-field style="width:40vw; float: left;" v-model="formOptionInput" placeholder="add option..."></v-text-field>
-    <v-btn  style=" float: left;" @click="formOptionInput == '' ? '' : add.options.push(formOptionInput), formOptionInput = ''">new</v-btn>
+    <v-text-field style="width:40vw; float: left;" v-model="formOptionInput" label="add option..." @keyup.enter="formOptionInput == '' ? '' : add.options.push(formOptionInput), formOptionInput = ''"></v-text-field>
+    <v-btn class="primary"  style=" float: left;"  @click="formOptionInput == '' ? '' : add.options.push(formOptionInput), formOptionInput = ''">new</v-btn>
     <br>
     <div class="" style="float:left">
+
       <v-chip small icon v-for="(option, index) in add.options" :key="option">
         <span>{{option}}</span>
         <v-avatar @click="add.options.splice(index, 1)" size="5" class="ma-0 pa-0 ml-1" ><v-icon >cancel</v-icon></v-avatar>
@@ -54,12 +56,12 @@
 
     </div>
   </div>
-  <v-text-field v-model="add.maxCount" pattern="[0-9]*" placeholder="list maximum"></v-text-field>
+  <v-text-field v-model="add.maxCount" pattern="[0-9]*" label="list maximum"></v-text-field>
   <span class="red--text" v-html="err"></span>
   <v-card-actions>
     <v-spacer></v-spacer>
-    <v-btn color="grey darken-1" flat @click.native="clearForm(); dialog = false">Cancel</v-btn>
-    <v-btn color="cyan darken-1" flat @click=" newList">Add!</v-btn>
+    <v-btn color="white" flat @click.native="clearForm(); dialog = false">Cancel</v-btn>
+    <v-btn outline color="white darken-1" flat @click=" newList">Add!</v-btn>
   </v-card-actions>
 </v-card>
 </v-dialog>
@@ -73,15 +75,13 @@
 <script scoped>
 import firebase from "firebase";
 import { db } from "../main";
-import store from '../store'
-
+import store from "../store";
 
 export default {
   name: "dashboardAddModal",
   data() {
     return {
       user: firebase.auth().currentUser,
-      accounts: [],
       dialog: false,
       disable: false,
       datePicker: false,
@@ -89,7 +89,6 @@ export default {
       formOptionInput: "",
       err: "",
       add: {
-        accountName: "",
         title: "",
         subTitle: "",
         date: "",
@@ -109,54 +108,71 @@ export default {
       return this.formatDate(this.date);
     },
     userInfo() {
-    return store.state.user
-}
+      let user = store.state.user;
 
+      return user;
+    },
+  accounts() {
+  let arr = []
+  for (var acc in this.userInfo.admin) {
+    if (this.userInfo.admin.hasOwnProperty(acc)) {
+      if (this.userInfo.admin[acc].isPremium) {
+        arr.push(this.userInfo.admin[acc].name)
+      }
+  }
+  }
+if (arr.length == 1) {
+  this.add.accountName = arr[0]
+}
+return arr
+}
   },
   watch: {
-    date(val) {
+    date() {
       this.add.date = this.formatDate(this.date);
-    },
-    userInfo: function () {
-    console.log('acc yo', this.userInfo.accounts[0]);
-    this.add.accountName = this.userInfo.accounts[0]
-}
+    }
+
   },
   methods: {
-clearForm: function () {
-  this.add.accountName = ""
-  this.add.title = ""
-  this.add.subTitle = ""
-  this.add.date = ""
-  this.add.created = new Date()
-  this.add.count = 0
-  this.add.maxCount = ""
-  this.add.options = ["+1", "Tokens"]
-  this.add.owner = ""
-  this.add.accountId = ""
-  this.add.accountName = ""
+    clearForm: function() {
+      if (Object.keys(this.userInfo.admin).length > 0) {
+        this.add.accountName = "";
+      }
+      this.add.title = "";
+      this.add.subTitle = "";
+      this.add.date = "";
+      this.add.created = new Date();
+      this.add.count = 0;
+      this.add.maxCount = "";
+      this.add.options = ["Tokens"];
+      this.add.owner = "";
+      this.add.accountId = "";
 
-this.err = ""
-},
+      this.err = "";
+    },
     newList: async function() {
       var d = this;
       let add = this.add;
-      add.date = this.computedDateFormatted
+      add.date = this.computedDateFormatted;
       var listRef = db.collection("lists").doc();
-
 
       if (add.accountName === "") {
         this.err = "You have to pick an account <br>";
         return;
       }
 
-      if (add.title == "" || add.subTitle == "" || add.date == "" || add.date == null  ) {
-        return this.err = "Enter Title, SubTitle and Date. <br>";
+      if (
+        add.title == "" ||
+        add.subTitle == "" ||
+        add.date == "" ||
+        add.date == null
+      ) {
+        return (this.err = "Enter Title, SubTitle and Date. <br>");
       }
       // vul add object
       var user = this.user;
       add.owner = user.uid;
-      let mainItemId = await listRef.collection('list_items').add({})
+      let mainItemId = await listRef.collection("list_items").add({});
       add.main_item = mainItemId.id;
 
       //  get id of accountname.
@@ -169,9 +185,13 @@ this.err = ""
       // vul database
 
       var listDoc = await listRef.set(add); //returns ID in listRef.id
+      db.collection("stats")
+        .doc(listRef.id)
+        .set({ log: [] });
+
       d.$emit("refreshList");
       d.dialog = false;
-this.clearForm()
+      this.clearForm();
     },
     formatDate(date) {
       if (!date) return null;

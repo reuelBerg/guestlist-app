@@ -20,13 +20,14 @@ let router = new Router({
   base: process.env.BASE_URL,
   routes: [
     {
-      path: "/home",
+      path: "/",
+      alias: "/home",
       name: "home",
       component: Home
     },
     {
-      path: "/accountSettings/:id",
-      name: "accountsettings",
+      path: "/account/:id",
+      name: "account",
       component: accountSettings,
       meta: {
         requiresAuth: true
@@ -67,13 +68,11 @@ let router = new Router({
     {
       path: "/stats/:id",
       name: "stats",
-      component: stats,
-      meta: {
-        requiresAuth: true
-      }
+      component: stats
     },
     {
       path: "/login",
+      alias: "/login/:email",
       name: "login",
       component: Login
     },
@@ -91,11 +90,11 @@ let router = new Router({
 });
 
 router.beforeEach((to, from, next) => {
-  if (to.path === "/login") {
-    next();
-    return;
-  }
-  if (to.path === "/") {
+  // if (to.path === "/login") {
+  //   next();
+  //   return;
+  // }
+  if (to.path === "/" || to.path === "/home") {
     next();
     return;
   }
@@ -103,12 +102,11 @@ router.beforeEach((to, from, next) => {
   let currentUser = firebase.auth().currentUser;
   let requiresAuth = to.matched.some(record => record.meta.requiresAuth);
   if (requiresAuth && !currentUser) {
-    alert("je moet eerst inloggen voor deze pagina");
+    // alert("je moet eerst inloggen voor deze pagina");
     next("login");
-  }
-
-  //else if (!requiresAuth && currentUser) {console.log('case 2'); next('home')}
-  else {
+  } else if (!requiresAuth && currentUser) {
+    next();
+  } else {
     next();
   }
 });

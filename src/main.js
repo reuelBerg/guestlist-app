@@ -8,6 +8,9 @@ import firebase from "firebase/app";
 import "material-design-icons/iconfont/material-icons.css";
 import "typeface-roboto/index.css";
 import store from "./store";
+import VueChartkick from 'vue-chartkick';
+import Chart from 'chart.js';
+
 require("firebase/firestore");
 require("firebase/auth");
 
@@ -27,16 +30,17 @@ db.enablePersistence({ experimentalTabSynchronization: true }).catch(function(
   if (err.code == "failed-precondition") {
     // Multiple tabs open, persistence can only be enabled
     // in one tab at a a time.
-    alert("Multiple tabs are open! 1 tab maximum. " + err);
+    alert("Please use this app within 1 tab so we can maintain a realtime or offline connection" + err);
   } else if (err.code == "unimplemented") {
     // The current browser does not support all of the
     // features required to enable persistence
-    alert("Offline access not supported by browser. " + err);
+    alert("Offline access is not supported by browser. " + err);
   }
 });
 // Subsequent queries will use persistence, if it was enabled successfully
 
 Vue.use(Vuetify);
+Vue.use(VueChartkick) //, {adapter: Chart}
 
 Vue.config.productionTip = false;
 

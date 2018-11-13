@@ -1,6 +1,6 @@
 <template>
   <v-dialog v-model="dialog" persistent >
-        <v-btn :large="$vuetify.breakpoint.smAndUp" fixed absolute bottom right fab icon class="black mb-2" style=" bottom: 55px;" slot="activator" >
+        <v-btn :large="$vuetify.breakpoint.smAndUp" fixed absolute bottom right fab icon class="black mb-2" :style="$vuetify.breakpoint.xsOnly ? 'bottom: 80px;' :'bottom: 100px;'" slot="activator" >
           <v-icon   :large="$vuetify.breakpoint.smAndUp">add</v-icon>
         </v-btn>
         <!-- add name to list ============================================================================  add name to list -->
@@ -169,6 +169,14 @@ if (val <= 0) {
       }
       if (this.add.type == "GROUP" && this.add.groupTotal == '') {
         return this.error = 'Enter the group total'
+      }
+
+      for (var option in this.add.options) {
+        if (this.add.options.hasOwnProperty(option)) {
+          if (this.add.options[option] === '' || this.add.options[option] === 0 || this.add.options[option] === null) {
+            delete this.add.options[option]
+          }
+        }
       }
       // add user id to this new item
       this.add.addById = user.uid;

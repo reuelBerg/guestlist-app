@@ -1,17 +1,18 @@
 <template>
   <v-dialog v-model="dialog" persistent class="">
-    <v-btn small fab class="grey" slot="activator"><v-icon>person_add</v-icon></v-btn>
+    <v-btn small fab class="pink darken-2 pink--text text--lighten-5" slot="activator"><v-icon style="font-size:27px;">person_add</v-icon></v-btn>
 
 
     <!-- add name to list ============================================================================  add name to list -->
-    <v-card transition="slide-y-reverse-transition" class="pa-3">
-      <h2 class="mt-3">Share with someone</h2>
+    <v-card dark transition="slide-y-reverse-transition" class="pa-3 barcolor">
+      <h2 class="mt-3 headline font-weight-bold">Share with someone</h2>
       <v-text-field v-model="shareWithInput" placeholder="Email" style=""></v-text-field>
       <v-select
       :items="['ACTIVATE', 'ADD']"
       label="add permission"
       v-model="shareModeInput"
       ></v-select>
+      <v-text-field v-show="shareModeInput == 'ADD'" v-model="subListName" placeholder="Sublist name" style=""></v-text-field>
       <v-text-field v-show="shareModeInput == 'ADD'" v-model="shareAddLimit" oninput="validity.valid||(value='')" placeholder="max number of adds" min=0 pattern="[0-9]*" style=""></v-text-field>
       <v-layout v-show="shareModeInput == 'ADD' && add.options != []" row no-wrap align-center v-for="(item, index) in add.options" :key="item" class="">
         <span  class="pr-2 title" style="width:30%; min-width:100px; overflow:hidden;">{{item}}</span>
@@ -24,13 +25,13 @@
       <v-btn small icon style="margin: 1px"  color="teal" @click="clear(item)"><v-icon>clear</v-icon></v-btn>
 
     </v-layout>
-    <v-btn left small class="pink darken-2" @click="addShared">send invitation</v-btn>
+    <v-btn block small class="pink darken-2" @click="addShared">send invitation</v-btn>
     <p class="red--text" v-html="error"></p>
     <div v-show="!dbsharedlist" class="mt-3" style="border-bottom: 1px solid grey"></div>
 
 <h3 v-show="!dbsharedlist">Current users</h3>
-    <v-list two-line dense>
-      <v-list-tile class="grey darken-2" v-for="(item, key) in dbsharedlist" :key="key">
+    <v-list class="py-0" two-line dense>
+      <v-list-tile class="barcolor darken-1" v-for="(item, key) in dbsharedlist" :key="key">
         <v-list-tile-content>
           <v-list-tile-title v-text="item.email"></v-list-tile-title>
           <v-list-tile-sub-title>{{item.mode}} {{item.addLimit}}</v-list-tile-sub-title>
@@ -47,7 +48,7 @@
           <v-list>
             <span v-if="Object.keys(item.options).length === 0">empty</span>
 
-            <v-list-tile v-else v-for="(it, ke) in item.options">
+            <v-list-tile v-else v-for="(it, ke) in item.options" :key="item.ke">
 
               <span v-text="key"></span>: <span v-text="it"></span>
             </v-list-tile>
@@ -60,10 +61,10 @@
 
     </v-list-tile>
   </v-list>
-  <v-card-actions>
+  <v-card-actions class="">
     <v-spacer></v-spacer>
 
-    <v-btn color="cyan darken-1" flat @click="clearForm(); dialog = false">Close</v-btn>
+    <v-btn color="white " flat @click="clearForm(); dialog = false">Close</v-btn>
   </v-card-actions>
 </v-card>
 </v-dialog>
@@ -87,9 +88,11 @@ export default {
   data() {
     return {
       user: firebase.auth().currentUser,
+      stopRefresh: false,
       dialog: false,
       shareWithInput: "",
       shareModeInput: "",
+      subListName: "",
       shareAddLimit: "",
       sharedOptions: {},
       dbsharedlist: {},
@@ -99,12 +102,16 @@ export default {
   },
   computed: {},
   watch: {
+  dialog: function () {
+    this.refreshSharedList();
+  }
   },
   methods: {
 clearForm: function () {
   this.shareWithInput = ""
   this.shareModeInput = ""
   this.shareAddLimit = ""
+  this.subListName = ""
   this.sharedOptions = {}
   this.dbsharedlist = {}
   this.error = ''
@@ -120,6 +127,7 @@ clearForm: function () {
       var obj = {
         mode: this.shareModeInput,
         addLimit: this.shareAddLimit,
+        subListName: this.subListName || null,
         options: this.sharedOptions
       };
       this.output = obj;
@@ -143,7 +151,7 @@ if (this.shareModeInput == 'ADD' && this.shareAddLimit == "") {
   return this.error += 'Set amount of adds on list. <br>'
 }
       //bounce if own email
-      if (shareWithInput === user.email) {return alert("you cannot add yourself") }
+      if (shareWithInput.toLowerCase() === user.email) {return alert("you cannot add yourself") }
       for (var prs in this.dbsharedlist) {
         if (this.dbsharedlist[prs].email === shareWithInput) {
           return alert("person already in shared list!");
@@ -162,11 +170,11 @@ if (this.shareModeInput == 'ADD' && this.shareAddLimit == "") {
       // add user if none
       let ref; let id; let name = null;
       const inviteRef = db.collection("invites");
-        // if no user
+        // if no user BETA ALERT
   if (userCheck.empty && inviteCheck.empty ) { return alert('in BETA 1.0 you can only invite people who already have an account. Please make sure they register before inviting. This feature will be added soon.')}
 
 if (userCheck.empty && inviteCheck.empty ) {
-//make list_item_id
+//add temp user to invites collection
         let inv = await inviteRef.add({ email: shareWithInput, name: null, created: new Date() }); //gets more stuff added
         console.log("temp user =>", inv);
         ref = db.collection("users").doc(inv.id);
@@ -194,7 +202,7 @@ if (userCheck.empty && inviteCheck.empty ) {
       // if not shown on screen (or in vm.data), set shared and make item
       if (true) {
         // if ADD create list_item for this person
-        let newItem = await listRef.collection('list_items').doc(id).set({})
+        let newItem = await listRef.collection('list_items').doc(window.btoa(shareWithInput)).set({})
 
         var obj = {
           email: shareWithInput,
@@ -205,7 +213,7 @@ if (userCheck.empty && inviteCheck.empty ) {
 
 
         let str = 'shared.' + id // user id
-        listRef.update({[str]: obj}) //update list main
+        listRef.update({[str]: obj}) //update listconf doc
 
         this.refreshSharedList();
       } else {
@@ -235,15 +243,16 @@ if (userCheck.empty && inviteCheck.empty ) {
         },
         refreshSharedList: async function() {
           // get all shared users from sharedOptions subcollection
+if (!this.dialog) {return}
           //  TODO: show if permitted
           var getSharedList = await db.collection("lists").doc(this.add.id).get();
           this.dbsharedlist = getSharedList.data().shared
 console.log('dbshared => ', getSharedList.data());
+
         }
       }, //> methods
-      created: function() {
+      mounted: function() {
 
-        this.refreshSharedList();
       }
     };
     </script>

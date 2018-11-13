@@ -1,48 +1,77 @@
-// const functions = require("firebase-functions");
-
-// // Create and Deploy Your First Cloud Functions
-// // https://firebase.google.com/docs/functions/write-firebase-functions
-//
-// exports.helloWorld = functions.https.onRequest((request, response) => {
-//  response.send("Hello from Firebase!");
-// });
-
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 admin.initializeApp();
+const db = admin.firestore();
 
-// Keeps track of the length of the 'likes' child list in a separate property.
-exports.listcount4 = functions.database
-  .ref("/stats/{statid}")
-  .onWrite(change => {
-    const listRef = change.after.ref.parent;
+// // Keeps track of the length of the 'likes' child list in a separate property.
+// exports.statcount = functions.firestore
+//   .document("/lists/{listId}/list_items/{itemId}") // TODO WARNING INFINITE LOOP!
+//   .onUpdate((change, context) => {
+//     if (!change.after.exists) {
+//       return null;
+//     }
+//     if (change.after.data().log.length <= change.before.data().log.length) {
+//       return null;
+//     }
+//     // get data
+//     let lastLog = change.after.data().log.pop();
+//     let statCount = change.after.data().log;
+//
+//     // get count
+//     let guestAmount = lastLog.count;
+//
+//     // if checkedIn then + count else - count OR make call on created is maybe better
+//     if (lastLog.checkedIn) {
+//       statCount += guestAmount;
+//     } else {
+//       statCount -= guestAmount;
+//     }
+//     return change.after.ref.update({ statCount: newCount });
+//   });
 
-    console.log(change);
+// httpsCallable function to recount the current list due to upload via spreadsheet
+// if called, check main-item length and add the listconfig 'add' amount of each shared/add user
+// exports.recountItems = functions.https.onCall((data, context) => {
+//   return db.runTransaction(transaction => {
+//     return transaction.get(listRef).then(list => {
+//       let newcount = list.data().count + increment;
+//       return transaction.update(listRef, { count: newcount });
+//     });
+//   });
+//
+// });
+
+// Keeps track of the length of the current list count in the list config.
+exports.listcount = functions.firestore
+  .document("/lists/{listId}/list_items/{itemId}")
+  .onUpdate((change, context) => {
+    if (!change.after.exists) {
+      return null;
+    }
+    let before = Object.keys(change.before.data()).length;
+    let after = Object.keys(change.after.data()).length;
+    console.log(before, " ", after);
+
     let increment;
-    if (change.after.exists() && !change.before.exists()) {
-      sharedRef.push(change.after.data());
-    } else if (!change.after.exists() && change.before.exists()) {
+    if (after > before) {
+      increment = 1;
+    } else if (after < before) {
       increment = -1;
     } else {
       return null;
     }
+    // const ref = "/lists/" + context.params.listId;
 
-    // Return the promise from countRef.transaction() so our function
-    // waits for this async event to complete before it exits.
-    return db
-      .transaction(async (current) => {
-        let list = await current.get(listRef).once();
-        let count = list.data().count + increment;
-        
-        return current.update(listRef, { count: count });
-      })
-      .then(() => {
-        return console.log("Counter updated.");
-      })
-      .catch(e => {
-        return console.log("ERROR: Counter not updated.");
+    const listRef = change.after.ref.parent.parent;
+
+    return db.runTransaction(transaction => {
+      return transaction.get(listRef).then(list => {
+        let newcount = list.data().count + increment;
+        return transaction.update(listRef, { count: newcount });
       });
+    });
   });
+
 //
 // // If the number of likes gets deleted, recount the number of likes
 // exports.recountlikes = functions.database.ref('/posts/{postid}/likes_count').onDelete((snap) => {
